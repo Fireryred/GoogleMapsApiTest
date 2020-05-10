@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "740422220726",
+    "firebase_url": "https://plated-hash-276018.firebaseio.com",
+    "project_id": "plated-hash-276018",
+    "storage_bucket": "plated-hash-276018.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:740422220726:android:045baa8d12213c058a1f17",
+        "android_client_info": {
+          "package_name": "com.example.googlemapapi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "740422220726-pt1bhlek49mldsq7rqnr3tm6pl4r1rde.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_cceBrsRhAGXwuJCQ0Ef1xCmKc0qtMrQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "740422220726-pt1bhlek49mldsq7rqnr3tm6pl4r1rde.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
