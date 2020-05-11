@@ -95,8 +95,26 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                 if (task.isSuccessful()) {
                     riderLocation = task.getResult().toObject(UserLocation.class);
+                    LatLng riderLatLng = new LatLng(riderLocation.getGeoPoint().getLatitude(), riderLocation.getGeoPoint().getLongitude());
+                    googleMap.clear();
+                    Marker riderMarker = googleMap.addMarker(new MarkerOptions().position(riderLatLng).title("Rider"));
+                    getUserLocation(riderMarker);
+                    Log.d(TAG, "onComplete: " + (googleMap == null));
                     Log.d(TAG, "onComplete: riderLocation" + riderLocation.getGeoPoint().toString());
                 }
+            }
+        });
+    }
+
+    private void getUserLocation(Marker riderMarker) {
+        DocumentReference locRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
+        locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                userLocation = task.getResult().toObject(UserLocation.class);
+                LatLng userLatLng = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
+                Marker userMarker = googleMap.addMarker(new MarkerOptions().position(userLatLng).title("user"));
+                calculateDirections(riderMarker, userMarker);
             }
         });
     }
@@ -108,7 +126,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
                 Log.d(TAG, "startLocationService: Henlo?");
                 Map.this.startForegroundService(serviceIntent);
             } else {
-                startForegroundService(serviceIntent);
+                startService(serviceIntent);
             }
         }
     }
@@ -160,40 +178,39 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
             }
         });
     }
-    private void addMarkers() {
-        DocumentReference userLocRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
-        userLocRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()){
-                    Log.d(TAG, "onComplete: " + (googleMap == null));
-                    userLocation = task.getResult().toObject(UserLocation.class);
-                    Log.d(TAG, "onComplete: " + userLocation.getGeoPoint().toString());
-                    LatLng userLatLng = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
-                    Marker userMarker = googleMap.addMarker(new MarkerOptions().position(userLatLng).title("User"));
-                    googleMap.setMyLocationEnabled(true);
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15));
-                    getRiderLocation(userMarker);
-                }
-            }
-        });
-    }
-
-    private void getRiderLocation(Marker userMarker) {
-        DocumentReference riderLocRef = fStore.collection("User Locations").document("qW5Q6U11vNdaRqtNxFwxScCoi343");
-        riderLocRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()){
-                    Log.d(TAG, "onComplete: " + (googleMap == null));
-                    Log.d(TAG, "onComplete: rider" + task.getResult().getGeoPoint("geo_point").toString());
-                    LatLng riderLatLng = new LatLng(task.getResult().getGeoPoint("geo_point").getLatitude(), task.getResult().getGeoPoint("geo_point").getLongitude());
-                    Marker riderMarker = googleMap.addMarker(new MarkerOptions().position(riderLatLng).title("Rider"));
-                    calculateDirections(riderMarker, userMarker);
-                }
-            }
-        });
-    }
+//    private void addMarkers() {
+//        DocumentReference userLocRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
+//        userLocRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+//            @Override
+//            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+//                if (task.isSuccessful()){
+//                    Log.d(TAG, "onComplete: " + (googleMap == null));
+//                    userLocation = task.getResult().toObject(UserLocation.class);
+//                    Log.d(TAG, "onComplete: " + userLocation.getGeoPoint().toString());
+//                    LatLng userLatLng = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
+//                    Marker userMarker = googleMap.addMarker(new MarkerOptions().position(userLatLng).title("User"));
+//                    googleMap.setMyLocationEnabled(true);
+//                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15));
+//                    getRiderLocation(userMarker);
+//                }
+//            }
+//        });
+//    }
+//
+//    private void getRiderLocation(Marker userMarker) {
+//        DocumentReference riderLocRef = fStore.collection("User Locations").document("qW5Q6U11vNdaRqtNxFwxScCoi343");
+//        riderLocRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+//            @Override
+//            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+//                if (task.isSuccessful()){
+//                    riderLocation = task.getResult().toObject(UserLocation.class);
+//                    LatLng riderLatLng = new LatLng(riderLocation.getGeoPoint().getLatitude(), riderLocation.getGeoPoint().getLongitude());
+//                    Marker riderMarker = googleMap.addMarker(new MarkerOptions().position(riderLatLng).title("Rider"));
+//                    calculateDirections(riderMarker, userMarker);
+//                }
+//            }
+//        });
+//    }
 
     private void initGoogleMap(Bundle savedInstanceState){
         Bundle mapViewBundle = null;
@@ -244,7 +261,17 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
-        addMarkers();
+        googleMap.setMyLocationEnabled(true);
+        DocumentReference locRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
+        locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                userLocation = task.getResult().toObject(UserLocation.class);
+                LatLng location = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
+            }
+        });
+//        addMarkers();
     }
 
     @Override
