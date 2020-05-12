@@ -27,6 +27,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
@@ -37,6 +38,9 @@ import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
 import com.google.maps.PendingResult;
 import com.google.maps.model.DirectionsResult;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Map extends AppCompatActivity implements OnMapReadyCallback {
     private static final String MAP_VIEW_BUNDLE_KEY = "MapViewBundleKey";
@@ -56,6 +60,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
     private GeoApiContext geoApiContext = null;
     private GoogleMap googleMap;
 
+    public static List<Task<DocumentSnapshot>> all = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,7 +80,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
             }
         });
         initGoogleMap(savedInstanceState);
-        getUserDetails();
+
     }
     private void startUserLocationsRunnable(final String riderId){
         handler.postDelayed(runnable = new Runnable() {
@@ -108,7 +114,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
 
     private void getUserLocation(Marker riderMarker) {
         DocumentReference locRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
-        locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+        all.add(locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                 userLocation = task.getResult().toObject(UserLocation.class);
@@ -116,7 +122,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
                 Marker userMarker = googleMap.addMarker(new MarkerOptions().position(userLatLng).title("user"));
                 calculateDirections(riderMarker, userMarker);
             }
-        });
+        }));
     }
 
     private void startLocationService(){
@@ -169,14 +175,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
     public void getUserDetails(){
         DocumentReference userRef = fStore.collection("users").document(fAuth.getCurrentUser().getUid());
         Log.d(TAG, "getUserDetails: " + fAuth.getCurrentUser().getUid());
-        userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+        all.add(userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                 user = new User();
                 user = task.getResult().toObject(User.class);
                 getKnownLastLocation();
             }
-        });
+        }));
     }
 //    private void addMarkers() {
 //        DocumentReference userLocRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
@@ -262,15 +268,24 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback {
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
         googleMap.setMyLocationEnabled(true);
-        DocumentReference locRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
-        locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+
+        getUserDetails();
+        Tasks.whenAllComplete(all).addOnCompleteListener(new OnCompleteListener<List<Task<?>>>() {
             @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                userLocation = task.getResult().toObject(UserLocation.class);
-                LatLng location = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
+            public void onComplete(@NonNull Task<List<Task<?>>> task) {
+                DocumentReference locRef = fStore.collection("User Locations").document(fAuth.getCurrentUser().getUid());
+                locRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        userLocation = task.getResult().toObject(UserLocation.class);
+                        LatLng location = new LatLng(userLocation.getGeoPoint().getLatitude(), userLocation.getGeoPoint().getLongitude());
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
+                    }
+                });
             }
         });
+
+
 //        addMarkers();
     }
 
